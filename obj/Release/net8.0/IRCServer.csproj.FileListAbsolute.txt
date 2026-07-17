@@ -1,0 +1,15 @@
+C:\Users\joel.coopersmith\Claude\code\IRCServer\bin\Release\net8.0\IRCServer.exe
+C:\Users\joel.coopersmith\Claude\code\IRCServer\bin\Release\net8.0\IRCServer.deps.json
+C:\Users\joel.coopersmith\Claude\code\IRCServer\bin\Release\net8.0\IRCServer.runtimeconfig.json
+C:\Users\joel.coopersmith\Claude\code\IRCServer\bin\Release\net8.0\IRCServer.dll
+C:\Users\joel.coopersmith\Claude\code\IRCServer\bin\Release\net8.0\IRCServer.pdb
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.AssemblyInfoInputs.cache
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.AssemblyInfo.cs
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.csproj.CoreCompileInputs.cache
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.sourcelink.json
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.dll
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\refint\IRCServer.dll
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.pdb
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\IRCServer.genruntimeconfig.cache
+C:\Users\joel.coopersmith\Claude\code\IRCServer\obj\Release\net8.0\ref\IRCServer.dll
