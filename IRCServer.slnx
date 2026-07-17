@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Admin/">
+    <Project Path="Admin/IRCServerAdmin.csproj" />
+  </Folder>
+  <Folder Name="/Server/">
+    <Project Path="Server/IRCServer.csproj" />
+  </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="Shared/IRCServer.Shared.csproj" />
+  </Folder>
+</Solution>
