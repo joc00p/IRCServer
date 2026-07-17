@@ -49,7 +49,15 @@ Point any IRC client at `localhost:6667`.
 dotnet run --project Admin
 ```
 
-Connect to the server's admin port (default `127.0.0.1:6668`). The app provides:
+The admin app can **launch the server for you**: set the IRC port (and
+optionally an admin password), click **Launch Server**, and it starts the
+server process and auto-connects to its control port. **Stop Server** shuts it
+down; the process is also stopped when the admin app closes. If the server
+binary can't be found automatically, you'll be prompted to locate
+`IRCServer.exe`.
+
+Alternatively, connect to an already-running server's admin port (default
+`127.0.0.1:6668`). The app provides:
 
 - **Server Stats** — uptime, current/peak users, total connections, channel
   count, messages sent/received, ban counts.

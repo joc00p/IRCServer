@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using IRCServer.Shared;
 
 namespace IRCServer.Admin;
@@ -5,6 +6,12 @@ namespace IRCServer.Admin;
 public sealed class AdminForm : Form
 {
     private readonly AdminClient _client = new();
+
+    // Server launch controls
+    private readonly TextBox _ircPort = new() { Text = "6667", Width = 55 };
+    private readonly Button _launchBtn = new() { Text = "Launch Server", Width = 110 };
+    private readonly Label _serverStatus = new() { Text = "Server not running", AutoSize = true, ForeColor = Color.Gray, Margin = new Padding(8, 8, 0, 0) };
+    private Process? _serverProc;
 
     // Connection bar
     private readonly TextBox _host = new() { Text = "127.0.0.1", Width = 90 };
@@ -45,22 +52,33 @@ public sealed class AdminForm : Form
 
         BuildLayout();
 
+        _launchBtn.Click += async (_, _) => await ToggleServerAsync();
         _connectBtn.Click += async (_, _) => await ToggleConnectAsync();
         _autoRefresh.CheckedChanged += (_, _) => { if (_client.IsConnected && _autoRefresh.Checked) _timer.Start(); else _timer.Stop(); };
         _timer.Tick += async (_, _) => await RefreshCurrentTabAsync();
         _tabs.SelectedIndexChanged += async (_, _) => await RefreshCurrentTabAsync();
         _channelsView.SelectedIndexChanged += (_, _) => ShowChannelDetail();
 
-        FormClosing += (_, _) => { _timer.Stop(); _client.Dispose(); };
+        FormClosing += (_, _) => { _timer.Stop(); _client.Dispose(); StopServer(); };
     }
 
     // ── Layout ──────────────────────────────────────────────────────────
     private void BuildLayout()
     {
-        var bar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(6, 6, 6, 0), WrapContents = false };
-        bar.Controls.Add(new Label { Text = "Host:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3, 8, 0, 0) });
+        var bar = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 76, Padding = new Padding(6, 6, 6, 0), WrapContents = true };
+        Label Lbl(string t) => new() { Text = t, AutoSize = true, Margin = new Padding(3, 8, 0, 0) };
+
+        // Row 1 — launch/stop the local server process
+        bar.Controls.Add(Lbl("IRC Port:"));
+        bar.Controls.Add(_ircPort);
+        bar.Controls.Add(_launchBtn);
+        bar.Controls.Add(_serverStatus);
+        bar.SetFlowBreak(_serverStatus, true);
+
+        // Row 2 — connect the admin client to the control port
+        bar.Controls.Add(Lbl("Admin Host:"));
         bar.Controls.Add(_host);
-        bar.Controls.Add(new Label { Text = "Port:", AutoSize = true, Margin = new Padding(3, 8, 0, 0) });
+        bar.Controls.Add(Lbl("Port:"));
         bar.Controls.Add(_port);
         bar.Controls.Add(_pass);
         bar.Controls.Add(_connectBtn);
@@ -155,6 +173,126 @@ public sealed class AdminForm : Form
         return page;
     }
 
+    // ── Server process ──────────────────────────────────────────────────
+    private async Task ToggleServerAsync()
+    {
+        if (_serverProc is { HasExited: false }) { StopServer(); return; }
+
+        var exe = FindServerExe();
+        if (exe == null)
+        {
+            using var ofd = new OpenFileDialog { Title = "Locate IRCServer.exe", Filter = "IRCServer.exe|IRCServer.exe|Executables|*.exe" };
+            if (ofd.ShowDialog(this) != DialogResult.OK) return;
+            exe = ofd.FileName;
+        }
+
+        if (!int.TryParse(_ircPort.Text, out var ircPort) || !int.TryParse(_port.Text, out var adminPort))
+        { Warn("Invalid port"); return; }
+
+        try
+        {
+            var psi = new ProcessStartInfo(exe)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(exe)!
+            };
+            psi.ArgumentList.Add(ircPort.ToString());
+            psi.ArgumentList.Add(adminPort.ToString());
+            if (!string.IsNullOrEmpty(_pass.Text)) psi.ArgumentList.Add(_pass.Text);
+
+            _serverProc = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            _serverProc.OutputDataReceived += (_, e) => { if (e.Data != null) UI(() => Log("[srv] " + e.Data)); };
+            _serverProc.ErrorDataReceived  += (_, e) => { if (e.Data != null) UI(() => Log("[srv!] " + e.Data)); };
+            _serverProc.Exited += (_, _) => UI(() =>
+            {
+                Log("Server process exited");
+                _launchBtn.Text = "Launch Server";
+                SetServerStatus("Server not running", false);
+            });
+            _serverProc.Start();
+            _serverProc.BeginOutputReadLine();
+            _serverProc.BeginErrorReadLine();
+
+            _launchBtn.Text = "Stop Server";
+            SetServerStatus($"Server running (irc {ircPort}, admin {adminPort})", true);
+            Log($"Launched {Path.GetFileName(exe)} {ircPort} {adminPort}");
+
+            // Auto-connect the admin client once the control port is up
+            _host.Text = "127.0.0.1";
+            for (int i = 0; i < 12 && !_client.IsConnected; i++)
+            {
+                await Task.Delay(300);
+                if (await ConnectAsync()) break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Warn($"Failed to launch server: {ex.Message}");
+        }
+    }
+
+    private void StopServer()
+    {
+        try
+        {
+            if (_client.IsConnected)
+            {
+                _timer.Stop();
+                _client.Dispose();
+                SetStatus("Disconnected", false);
+                _connectBtn.Text = "Connect";
+            }
+            if (_serverProc is { HasExited: false })
+            {
+                _serverProc.Kill(entireProcessTree: true);
+                _serverProc.WaitForExit(2000);
+            }
+        }
+        catch { }
+        finally
+        {
+            _serverProc?.Dispose();
+            _serverProc = null;
+            if (!IsDisposed)
+            {
+                _launchBtn.Text = "Launch Server";
+                SetServerStatus("Server not running", false);
+            }
+        }
+    }
+
+    // Search up from the app directory for the sibling Server build output.
+    private static string? FindServerExe()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (int i = 0; i < 8 && dir != null; i++, dir = dir.Parent)
+        {
+            var serverBin = Path.Combine(dir.FullName, "Server", "bin");
+            if (Directory.Exists(serverBin))
+            {
+                var exe = Directory.GetFiles(serverBin, "IRCServer.exe", SearchOption.AllDirectories)
+                    .OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
+                if (exe != null) return exe;
+            }
+        }
+        return null;
+    }
+
+    private void UI(Action a)
+    {
+        if (IsDisposed || !IsHandleCreated) return;
+        try { if (InvokeRequired) BeginInvoke(a); else a(); } catch { }
+    }
+
+    private void SetServerStatus(string text, bool running)
+    {
+        _serverStatus.Text = text;
+        _serverStatus.ForeColor = running ? Color.ForestGreen : Color.Gray;
+    }
+
     // ── Connection ──────────────────────────────────────────────────────
     private async Task ToggleConnectAsync()
     {
@@ -166,21 +304,27 @@ public sealed class AdminForm : Form
             _connectBtn.Text = "Connect";
             return;
         }
+        await ConnectAsync();
+    }
 
+    private async Task<bool> ConnectAsync()
+    {
         try
         {
-            if (!int.TryParse(_port.Text, out var port)) { Warn("Invalid port"); return; }
+            if (!int.TryParse(_port.Text, out var port)) { Warn("Invalid admin port"); return false; }
             await _client.ConnectAsync(_host.Text.Trim(), port, _pass.Text);
             SetStatus($"Connected to {_host.Text}:{port}", true);
             _connectBtn.Text = "Disconnect";
             Log($"Connected to admin port {_host.Text}:{port}");
             if (_autoRefresh.Checked) _timer.Start();
             await RefreshCurrentTabAsync();
+            return true;
         }
         catch (Exception ex)
         {
             SetStatus("Disconnected", false);
-            Warn($"Connection failed: {ex.Message}");
+            Log($"Connection failed: {ex.Message}");
+            return false;
         }
     }
 
