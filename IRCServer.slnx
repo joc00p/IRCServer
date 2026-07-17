@@ -1,7 +1,5 @@
 <Solution>
-  <Folder Name="/Admin/">
-    <Project Path="Admin/IRCServerAdmin.csproj" />
-  </Folder>
+  <Project Path="IRCServerAdmin.csproj" />
   <Folder Name="/Server/">
     <Project Path="Server/IRCServer.csproj" />
   </Folder>

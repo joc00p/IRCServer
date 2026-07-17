@@ -8,7 +8,13 @@
     <AssemblyName>IRCServerAdmin</AssemblyName>
     <RootNamespace>IRCServer.Admin</RootNamespace>
   </PropertyGroup>
+  <!-- This project lives at the repo root so `dotnet run` (no args) launches
+       the admin console. Exclude the sibling projects' sources from its glob. -->
   <ItemGroup>
-    <ProjectReference Include="..\Shared\IRCServer.Shared.csproj" />
+    <Compile Remove="Server\**\*.cs" />
+    <Compile Remove="Shared\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Shared\IRCServer.Shared.csproj" />
   </ItemGroup>
 </Project>

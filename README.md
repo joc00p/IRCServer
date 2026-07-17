@@ -9,9 +9,9 @@ server administration.
 
 | Project | Output | Description |
 |---------|--------|-------------|
-| `Shared/` | library | `IRCServer.Shared` — DTOs and JSON protocol for the admin control port |
+| *(root)* | WinForms exe | `IRCServerAdmin` — GUI admin console (default run target) |
 | `Server/` | console exe | `IRCServer` — the IRC server + loopback admin control port |
-| `Admin/`  | WinForms exe | `IRCServerAdmin` — GUI admin console |
+| `Shared/` | library | `IRCServer.Shared` — DTOs and JSON protocol for the admin control port |
 
 ## Build
 
@@ -19,7 +19,19 @@ server administration.
 dotnet build IRCServer.slnx -c Release
 ```
 
-## Run the server
+## Run (admin console)
+
+From the repo root, with no arguments:
+
+```
+dotnet run
+```
+
+This opens the admin console. From there, set the IRC port and click
+**Launch Server** to start the server and auto-connect — no separate step
+needed.
+
+## Run the server on its own
 
 ```
 dotnet run --project Server -- [ircPort] [adminPort] [adminPassword]
@@ -43,11 +55,7 @@ Point any IRC client at `localhost:6667`.
 - Server-wide bans block matching masks at registration and disconnect any
   matching connected user.
 
-## Run the admin application
-
-```
-dotnet run --project Admin
-```
+## Admin console details
 
 The admin app can **launch the server for you**: set the IRC port (and
 optionally an admin password), click **Launch Server**, and it starts the
