@@ -46,7 +46,7 @@ Point any IRC client at `localhost:6667`.
 ### Supported IRC commands
 
 `NICK` `USER` `PASS` `JOIN` `PART` `PRIVMSG` `NOTICE` `PING`/`PONG` `QUIT`
-`LIST` `NAMES` `WHO` `WHOIS` `MODE` `TOPIC` `CAP`
+`LIST` `NAMES` `WHO` `WHOIS` `MODE` `KICK` `TOPIC` `CAP`
 
 - The first user into a fresh channel is granted operator (`@`).
 - Channel modes enforced: `+t` (ops-only topic), `+n` (no external messages),

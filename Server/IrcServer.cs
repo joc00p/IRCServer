@@ -205,6 +205,13 @@ public class IrcChannel(string name)
         }
     }
 
+    // Remove a member by nick without broadcasting a PART (KICK sends its own line).
+    public bool RemoveMember(string nick)
+    {
+        _prefixes.TryRemove(nick, out _);
+        return _members.TryRemove(nick, out _);
+    }
+
     public void RenameMember(string oldNick, string newNick)
     {
         if (_members.TryRemove(oldNick, out var s))
@@ -404,6 +411,7 @@ public class ClientSession
             case "WHO":     HandleWho(rest); break;
             case "WHOIS":   HandleWhois(rest); break;
             case "MODE":    HandleMode(rest); break;
+            case "KICK":    HandleKick(rest); break;
             case "TOPIC":   HandleTopic(rest); break;
             case "PASS":    break;
             case "CAP":     HandleCap(rest); break;
@@ -525,6 +533,26 @@ public class ClientSession
                 channel.Remove(this, reason);
             }
         }
+    }
+
+    // KICK <channel> <user> [:<comment>]
+    private void HandleKick(string rest)
+    {
+        if (!_registered) return;
+        var parts = rest.Split(new[] { ' ' }, 3);
+        if (parts.Length < 2) { SendNumeric(461, "KICK :Not enough parameters"); return; }
+        var chName = parts[0];
+        var targetNick = parts[1];
+        var reason = parts.Length > 2 ? parts[2].TrimStart(':') : Nick!;
+
+        if (!_server.TryGetChannel(chName, out var ch)) { SendNumeric(403, $"{chName} :No such channel"); return; }
+        if (!ch.HasMember(Nick!)) { SendNumeric(442, $"{chName} :You're not on that channel"); return; }
+        if (!ch.IsOp(Nick!)) { SendNumeric(482, $"{chName} :You're not channel operator"); return; }
+        if (!ch.HasMember(targetNick)) { SendNumeric(441, $"{targetNick} {chName} :They aren't on that channel"); return; }
+
+        // Tell everyone (including the target) first, then remove the target.
+        ch.Broadcast($":{FullMask} KICK {chName} {targetNick} :{reason}");
+        ch.RemoveMember(targetNick);
     }
 
     private void HandlePrivmsg(string rest) => RelayMessage(rest, "PRIVMSG");
