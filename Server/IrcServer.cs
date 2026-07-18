@@ -488,7 +488,8 @@ public class ClientSession
             // Enforce +b bans (unless already a member)
             if (!channel.HasMember(Nick!) && channel.IsBanned(FullMask, out var b))
             {
-                SendNumeric(474, $"{name} :Cannot join channel (+b) — {b!.Reason}");
+                var why = string.IsNullOrEmpty(b!.Reason) ? "" : $" — {b.Reason}";
+                SendNumeric(474, $"{name} :Cannot join channel (+b){why}");
                 continue;
             }
             // Enforce +i invite-only (no INVITE support, so just block newcomers)
@@ -632,6 +633,15 @@ public class ClientSession
             if (!_server.TryGetChannel(target, out var ch)) { SendNumeric(403, $"{target} :No such channel"); return; }
             if (parts.Length == 1) { SendNumeric(324, $"{target} {(string.IsNullOrEmpty(ch.ModeString) ? "+" : ch.ModeString)}"); return; }
 
+            // Ban-list query: MODE #chan +b (or b) with no mask — anyone may view.
+            if (parts.Length == 2 && (parts[1] == "+b" || parts[1] == "b"))
+            {
+                foreach (var b in ch.Bans)
+                    SendNumeric(367, $"{target} {b.Mask} {(string.IsNullOrEmpty(b.SetBy) ? "server" : b.SetBy)} {((DateTimeOffset)b.SetUtc).ToUnixTimeSeconds()}");
+                SendNumeric(368, $"{target} :End of channel ban list");
+                return;
+            }
+
             if (!ch.IsOp(Nick!)) { SendNumeric(482, $"{target} :You're not channel operator"); return; }
 
             var applied = ApplyChannelModeString(ch, parts.Skip(1).ToArray());
@@ -671,8 +681,18 @@ public class ClientSession
         foreach (var c in flags)
         {
             if (c is '+' or '-') { sign = c; continue; }
-            string? param = (c is 'o' or 'v' or 'k' or 'l') && argIdx < args.Length ? args[argIdx++] : null;
-            var res = ch.ApplyModes(sign, c, param);
+            string? param = (c is 'o' or 'v' or 'k' or 'l' or 'b') && argIdx < args.Length ? args[argIdx++] : null;
+
+            string res;
+            if (c == 'b' && param != null)
+            {
+                // Channel ban: +b adds a mask, -b removes it.
+                if (sign == '+') ch.AddBan(param, "", Nick!);
+                else ch.RemoveBan(param);
+                res = $"{sign}b {param}";
+            }
+            else res = ch.ApplyModes(sign, c, param);
+
             if (res.Length > 0) sb.Append(sb.Length > 0 ? " " + res : res);
         }
         return sb.ToString();

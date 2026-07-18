@@ -52,6 +52,8 @@ Point any IRC client at `localhost:6667`.
 - Channel modes enforced: `+t` (ops-only topic), `+n` (no external messages),
   `+m` (moderated — only `@`/`+` may talk), `+i` (invite-only blocks new joins),
   `+b` (ban masks, matched on join).
+- Operators can set/remove channel bans with `MODE #chan +b <mask>` / `-b <mask>`,
+  and anyone can list them with `MODE #chan +b` (replies with `367`/`368`).
 - Server-wide bans block matching masks at registration and disconnect any
   matching connected user.
 
